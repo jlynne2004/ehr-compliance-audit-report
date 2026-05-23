@@ -1,0 +1,67 @@
+========================================================================
+EHR COMPLIANCE & DATA QUALITY AUDITOR - QUICK START SETUP
+========================================================================
+Thank you for downloading this automation toolkit! This tool is 
+designed to eliminate manual spreadsheet administration and help your 
+healthcare clinic maintain flawless compliance data registries.
+
+DEVELOPMENT BY: Jess Hayden | Healthcare Data Consultant
+BOOK A CUSTOM INTEGRATION CALL: https://your-zoom-scheduler-link.com
+CONTACT SUPPORT: jess@yourconsultingsite.com
+
+------------------------------------------------------------------------
+STEP 1: INITIAL ENVIRONMENT ENVIRONMENT SETUP
+------------------------------------------------------------------------
+Before running the files, ensure you have Python 3 installed on your 
+machine along with the two required data analysis libraries.
+
+Open your system terminal or command prompt and execute:
+pip install pandas openpyxl
+
+------------------------------------------------------------------------
+STEP 2: RUNNING A RECONCILIATION TEST RUN
+------------------------------------------------------------------------
+To view the automated dashboard working in real time using safe, 
+synthetic testing records:
+
+1. Place 'generate_mock_data.py' and 'EHR_Compliance_Audit_Report.py' 
+   in the exact same folder on your computer.
+2. Run the mock data script first to build your test environment:
+   python generate_mock_data.py
+3. This creates a test spreadsheet named 'messy_ehr_export.csv'.
+4. Now, run the primary auditor script:
+   python EHR_Compliance_Audit_Report.py
+5. Open the newly generated 'EHR_Compliance_Audit_Report.xlsx' file 
+   in Microsoft Excel to view your automated executive summary!
+
+------------------------------------------------------------------------
+STEP 3: MAPPING TO YOUR CLINIC'S EHR DATA
+------------------------------------------------------------------------
+To use this script for your own healthcare facility data tracking:
+1. Export your weekly operational data from your EHR (Athenahealth, 
+   eClinicalWorks, NextGen, etc.) as a standard .CSV spreadsheet.
+2. Name your file 'messy_ehr_export.csv' and place it in the same 
+   folder as the Python script.
+3. Ensure your file's columns match the standard fields expected 
+   by the script's ingestion layer:
+   - patient_id
+   - admission_date
+   - discharge_date
+   - provider_id
+   - provider_name
+   - provider_npi
+   - icd_10_code
+
+------------------------------------------------------------------------
+💼 NEED A CUSTOM EHR INTEGRATION PATHWAY?
+------------------------------------------------------------------------
+Every medical practice handles report fields, clinic location codes, 
+and spreadsheet architectures differently. 
+
+If you do not want to worry about changing your column layout manually, 
+or if you want this automation tool linked directly to your live clinical 
+reporting system, I can build that integration for you.
+
+Let's discuss linking an automated dashboard directly to your clinic data.
+👉 Schedule your 15-minute alignment call: https://your-zoom-scheduler-link.com
+========================================================================
