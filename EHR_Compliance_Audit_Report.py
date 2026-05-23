@@ -13,24 +13,30 @@ df = pd.read_csv("messy_ehr_export.csv")
 # Convert date columns to datetime objects for mathematical comparison
 df['admission_date'] = pd.to_datetime(df['admission_date'], errors='coerce')
 df['discharge_date'] = pd.to_datetime(df['discharge_date'], errors='coerce')
+current_date = pd.Timestamp(datetime.date.today())
 
 # Initialize lists to hold our audit tally findings
 audit_tally = []
 
-# Loop through records to perform row-by-row data quality checks
+# --- Check A: Track Duplicate NPI Mappings Across Entire File ---
+# Identity instances where an NPI maps to different doctor name variations
+npi_groups = df.groupby('provider_npi')['provider_name'].nunique()
+duplicate_npis = npi_groups[npi_groups > 1].index.tolist()
+
+# --- ROW-BY-ROW VALIDATION ---
 for idx, row in df.iterrows():
     patient = row['patient_id']
     
-    # Check 1: Missing or Malformed NPI (Must be exactly 10 digits)
-    npi = str(row['provider_npi']).strip().split('.')[0] # Clean float strings if any
-    if pd.isna(row['provider_npi']) or len(npi) != 10 or not npi.isdigit():
+    # 1. Invalid/Missing NPI
+    npi_raw = str(row['provider_npi']).strip().split('.')[0] # Clean float strings if any
+    if pd.isna(row['provider_npi']) or len(npi_raw) != 10 or not npi_raw.isdigit():
         audit_tally.append({
             "Patient ID": patient, "Field": "provider_npi", 
             "Issue Type": "Invalid/Missing NPI", "Current Value": row['provider_npi'],
             "Action Required": "Verify provider NPI profile and update registry."
         })
         
-    # Check 2: Date Logic Error (Discharge before Admission)
+    # 2. Timeline Discrepancy (Discharge before Admission)
     if pd.notna(row['admission_date']) and pd.notna(row['discharge_date']):
         if row['discharge_date'] < row['admission_date']:
             audit_tally.append({
@@ -39,14 +45,31 @@ for idx, row in df.iterrows():
                 "Current Value": f"Adm: {row['admission_date'].strftime('%Y-%m-%d')} | Dis: {row['discharge_date'].strftime('%Y-%m-%d')}",
                 "Action Required": "Review chart timeline; correct clinical dates."
             })
-            
-    # Check 3: Missing Required Clinical Coding for Compliance
+
+    # 3. Missing Billing Code
     if pd.isna(row['icd_10_code']) or str(row['icd_10_code']).strip() == "":
         audit_tally.append({
             "Patient ID": patient, "Field": "icd_10_code", 
             "Issue Type": "Missing Billing Code", "Current Value": "BLANK",
             "Action Required": "Route back to medical coding team for chart review."
         })
+
+    # 4. Duplicate Provider Profile (New Check)
+    if row['provider_npi'] in duplicate_npis:
+        audit_tally.append({
+            "Patient ID": patient, "Field": "provider_name",
+            "Issue Type": "Duplicate Provider Profile", "Current Value": row['provider_name'],
+            "Action Required": "Duplicate NPI mapping found. Merge clinician credentials in registry."
+        })
+        
+    # 5. Future Encounter Date Error (New Check)
+    if pd.notna(row['admission_date']) and row['admission_date'] > current_date:
+        audit_tally.append({
+            "Patient ID": patient, "Field": "admission_date",
+            "Issue Type": "Future Encounter Date", "Current Value": row['admission_date'].strftime('%Y-%m-%d'),
+            "Action Required": "Future date entry detected. Verify against physical intake sheets."
+        })
+
 
 # Convert audit findings into a clean dataframe
 df_tally = pd.DataFrame(audit_tally)
@@ -98,6 +121,85 @@ for col in ["A", "B"]:
     ws1[f"{col}4"].fill = fill_zebra
     ws1[f"{col}5"].fill = fill_zebra
 
+# Data Error Summary Table
+ws1["A9"] = "Data Error Summary"
+ws1["A9"].font = Font(name="Calibri", size=12, bold=True, color="1B365D")
+ws1["A10"] = "Issue Type"
+ws1["B10"] = "Count"
+ws1["A10"].font = font_header
+ws1["B10"].font = font_header
+ws1["A10"].fill = fill_header
+ws1["B10"].fill = fill_header
+
+# Align headers nicely (left for text, right for numeric count)
+ws1["A10"].alignment = Alignment(horizontal="left", vertical="center")
+ws1["B10"].alignment = Alignment(horizontal="right", vertical="center")
+
+# Define a thin grid border to replace the global gridlines inside this table
+grid_side = Side(style='thin', color='D9D9D9') # Light gray color matching standard Excel gridlines
+table_border = Border(left=grid_side, right=grid_side, top=grid_side, bottom=grid_side)
+
+issue_counts = df_tally['Issue Type'].value_counts()
+for idx, (issue, count) in enumerate(issue_counts.items(), start=11):
+    ws1[f"A{idx}"] = issue
+    ws1[f"B{idx}"] = count
+    ws1[f"A{idx}"].font = font_body
+    ws1[f"B{idx}"].font = font_body
+
+    # Align the text to the left and row counts to the right
+    ws1[f"A{idx}"].alignment = Alignment(horizontal="left", vertical="center")
+    ws1[f"B{idx}"].alignment = Alignment(horizontal="right", vertical="center")
+
+    # Apply the thin grid borders to just these cells 
+    ws1[f"A{idx}"].border = table_border
+    ws1[f"B{idx}"].border = table_border
+
+    # Apply soft zebra striping for readability
+    if idx % 2 == 0:
+        ws1[f"A{idx}"].fill = fill_zebra
+        ws1[f"B{idx}"].fill = fill_zebra
+
+# Data Error Bar Chart
+from openpyxl.chart import BarChart, Reference
+from openpyxl.chart.label import DataLabelList
+
+# 1. Initialize the Column Chart
+chart = BarChart()
+chart.type = "col"             # Vertical columns
+chart.style = 10               # Clean dark-blue professional template
+chart.title = "Distribution of Compliance Issues"
+# chart.y_axis.title = "Count"
+# chart.x_axis.title = "Issue Type"
+chart.y_axis.majorGridlines = None # Remove horizontal gridlines for a cleaner look
+
+# 2. Map the Data & Titles Natively (NO Loops to avoid XML corruption)
+# data_ref points to the numbers including the "Count" header (Rows 10 to 13, Column B)
+data_ref = Reference(ws1, min_col=2, min_row=10, max_row=10 + len(issue_counts))
+
+# cats_ref points to the specific text strings (Rows 11 to 13, Column A)
+cats_ref = Reference(ws1, min_col=1, min_row=11, max_row=10 + len(issue_counts))
+
+# Add data directly. titles_from_data=True handles the internal naming mapping safely.
+chart.add_data(data_ref, titles_from_data=True, from_rows=False)
+chart.set_categories(cats_ref)
+
+# 3. Clean up the Data Labels (Only show raw numbers on top of columns)
+chart.dataLabels = DataLabelList()
+chart.dataLabels.showVal = True       # Display number count cleanly
+chart.dataLabels.showCatName = False  # Keep messy floating text turned off
+
+# 4. Enforce the Color Coding and Legend Layout
+# Because openpyxl groups a single column dataset into one color by default,
+# this command forces Excel to color each bar uniquely based on its text category!
+chart.varyColors = True
+
+chart.legend.position = "r"           # Place your pristine color legend on the right side
+chart.width = 14                      
+chart.height = 9.5
+
+# 5. Place the Chart
+ws1.add_chart(chart, "D1")
+
 # ------------------------------------------
 # TAB 2: THE ACTIONABLE TALLY SHEET
 # ------------------------------------------
@@ -141,4 +243,4 @@ for ws in [ws1, ws2]:
 
 # Save the final automated file
 wb.save("EHR_Compliance_Audit_Report.xlsx")
-print("Process complete. Polished Excel report generated.")
+print("Process complete. Polished 5-point Audit Report generated successfully.")

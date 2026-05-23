@@ -2,9 +2,11 @@
 # This script is designed to export a sample of patient records to test the EHR_Compliance_Audit_Report script.
 
 # MESSY DATA PARAMETERS #
-# Missing NPI Numbers
+# Invalid/Missing NPI Numbers
 # Discharge Dates Before Admission Dates
-# Missing or Invalid ICD-10 Codes
+# Missing ICD-10 Codes
+# Duplicate Provider Names with Typos with Same NPI
+# Future Encounter Date Errors
 
 import pandas as pd
 import random
