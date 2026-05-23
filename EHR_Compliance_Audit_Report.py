@@ -1,3 +1,17 @@
+# ==============================================================================
+# AUTHOR METADATA & SUPPORT
+# ==============================================================================
+# Seller:        Jess Hayden
+# Website:       jesshaydenconsulting.com
+# Support Email: jlynne.hayden@gmail.com
+#
+# Need this pipeline integrated directly with your live clinical reporting API
+# (Athenahealth, eCW, NextGen, etc.)? Reach out via my website or email to discuss
+# bringing me on as a consultant to help with your data quality initiatives!
+# ==============================================================================
+
+# EHR COMPLIANCE & DATA QUALITY AUDIT REPORT
+
 import pandas as pd
 import datetime
 from openpyxl import Workbook
@@ -186,6 +200,7 @@ chart.set_categories(cats_ref)
 # 3. Clean up the Data Labels (Only show raw numbers on top of columns)
 chart.dataLabels = DataLabelList()
 chart.dataLabels.showVal = True       # Display number count cleanly
+chart.dataLabels.showSerName = False  # Hide the default "Series 1" label which is redundant
 chart.dataLabels.showCatName = False  # Keep messy floating text turned off
 
 # 4. Enforce the Color Coding and Legend Layout
