@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Ignore generated executive report workbooks
+output/EHR_Compliance_Audit_Report.xlsx
+
